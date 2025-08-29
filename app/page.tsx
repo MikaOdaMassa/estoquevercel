@@ -27,7 +27,7 @@ async function exportData(stockData: {[key: string]: any}) {
     const Swal = (await import('sweetalert2')).default;
     
     // URL do Apps Script
-    const appsScriptUrl = 'https://script.google.com/macros/s/AKfycby-Edk1mc8rhagzzLLHoXnjMrueZk4fu6MNZLZvw1mwkaWpu1jiOzHHpsiwBxEMh0k/exec';
+    const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw6NeBHL3R_NRNh2i6uUHIaYhnTBr5MSJK1AH27HNKo3jpy8N1FkiTKMdvcre-bD38/exec';
     
     // Buscar dados mais recentes do Google Sheets
     const res = await fetch(appsScriptUrl);
@@ -230,7 +230,7 @@ export default function Home() {
   const [syncError, setSyncError] = useState('');
   const [syncSuccess, setSyncSuccess] = useState('');
   const [syncFail, setSyncFail] = useState('');
-  const appsScriptUrl = 'https://script.google.com/macros/s/AKfycby-Edk1mc8rhagzzLLHoXnjMrueZk4fu6MNZLZvw1mwkaWpu1jiOzHHpsiwBxEMh0k/exec'; // ajuste se necessário
+  const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw6NeBHL3R_NRNh2i6uUHIaYhnTBr5MSJK1AH27HNKo3jpy8N1FkiTKMdvcre-bD38/exec'; // ajuste se necessário
 
   // Estado para controlar o modal de configuração
   const [showConfigModal, setShowConfigModal] = useState(false);
