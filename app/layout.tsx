@@ -1,43 +1,45 @@
 import type { Metadata } from "next";
-import { Inter, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Sidebar from "./components/Sidebar";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
+import { isAdmin } from "./actions/auth";
+import { cookies } from "next/headers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
-  title: "Controle de Estoque - Cozinha",
-  description: "Sistema de controle de estoque para cozinha integrado ao Google Sheets.",
+export const metadata: Metadata = {
+  title: "Cozinha Janela – Gestão Integrada",
+  description: "Sistema integrado de estoque e CMV – Cozinha Janela",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const admin = await isAdmin();
+  const cookieStore = await cookies();
+  const username = cookieStore.get('username')?.value;
+
   return (
     <html lang="pt-BR">
       <head>
-        <meta charSet="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        {/* Paleta de cores do Tailwind agora está em tailwind.config.ts */}
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        />
       </head>
-      <body className={`${inter.variable} ${geistSans.variable} ${geistMono.variable} overflow-x-hidden`}>{children}</body>
+      <body className="antialiased" style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb' }}>
+        <Sidebar isAdmin={admin} username={username} />
+        <main 
+          style={{ 
+            flex: 1, 
+            minWidth: 0, 
+            overflowX: 'hidden',
+            animation: 'fadeIn 0.5s ease-out' 
+          }}
+        >
+          {children}
+        </main>
+      </body>
     </html>
   );
 }

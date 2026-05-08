@@ -1,144 +1,150 @@
-# Sistema de Controle de Estoque - Cozinha
+# 🍔 Estoque Cozinha Janela
 
-## Funcionalidades Principais
+Sistema completo de gestão de inventário para Cozinha Janela, integrado com Google Sheets.
 
-### Rastreamento de Mudanças Inteligente
+## 📋 Funcionalidades Completas
 
-O sistema agora implementa um rastreamento inteligente de mudanças que detecta apenas os itens que foram modificados desde a última sincronização com o Google Sheets.
+### ✅ Gestão de Estoque
+- **69 itens pré-cadastrados** organizados em 9 categorias
+- Adicionar novos itens
+- Deletar itens (com confirmação)
+- Atualizar quantidades (+/- ou input direto)
+- Alertas de estoque baixo
 
-#### Como Funciona:
+### ✅ Busca e Filtros Avançados
+- Busca por nome do item
+- Filtro por categoria (CARNES, PÃES, QUEIJOS, INSUMOS, PORÇÕES, HORTIFRUTI, CONDIMENTOS, OUTROS, EMBALAGENS)
+- Filtro por status (Disponível, Estoque Baixo, Sem Estoque)
+- Ordenação (Nome, Status, Quantidade, Categoria)
+- Minimizar/Mostrar filtros
 
-1. **Dados Originais**: O sistema mantém uma cópia dos dados originais (última sincronização) no localStorage
-2. **Detecção de Mudanças**: Quando você modifica a quantidade de um item, o sistema compara com os dados originais
-3. **Indicação Visual**: Itens modificados são destacados com:
-   - Um anel azul ao redor do card
-   - Uma badge "Modificado" no nome do item
-   - Um indicador no header mostrando quantos itens foram modificados
+### ✅ Sincronização com Google Sheets
+- **Buscar Dados**: Puxa os dados mais recentes da planilha
+- **Sincronizar**: Envia apenas os itens modificados para a planilha
+- **Exportar CSV**: Exporta todos os dados em formato CSV
+- **Abrir Planilha**: Link direto para a planilha do Google
 
-#### Exemplo de Uso:
+### ✅ Interface Moderna
+- Estatísticas em tempo real (Total, Disponíveis, Baixo, Sem Estoque, Modificados)
+- Notificações com SweetAlert2
+- Loading states em todos os botões
+- Design responsivo
+- Ícones FontAwesome
 
-1. **Cenário**: Você tem açúcar com quantidade 5kg
-2. **Modificação**: Você altera para 10kg
-3. **Resultado**: Apenas o açúcar será enviado para o Google Sheets, não todos os itens
-4. **Sincronização**: O sistema envia apenas:
-   ```json
-   {
-     "collaborator": "Seu Nome",
-     "notes": "Observações",
-     "stockData": {
-       "1": {
-         "id": "1",
-         "name": "Açúcar",
-         "category": "INSUMOS",
-         "quantity": 10,
-         "unit": "kg",
-         "minStock": 2
-       }
-     }
-   }
-   ```
+## 🚀 Como Configurar
 
-### Funcionalidades Adicionais
+### 1. Configurar o Google Apps Script
 
-#### Modal de Sincronização Melhorado
-- Mostra quantos itens foram modificados
-- Lista os primeiros 5 itens que serão enviados
-- Indica se há mais itens além dos mostrados
+1. Acesse [Google Apps Script](https://script.google.com)
+2. Crie um novo projeto
+3. Cole o código do arquivo `inventory-script.js`
+4. O ID da planilha já está configurado: `1vq87hX51Jk3VZoZGARLpJ7lPtFzCOEQyI1ptNIfZwG0`
+5. Implante como Web App:
+   - Clique em **Implantar** > **Nova implantação**
+   - Tipo: **Aplicativo da Web**
+   - Executar como: **Eu**
+   - Quem tem acesso: **Qualquer pessoa**
+   - Clique em **Implantar**
+   - **Copie a URL gerada** (algo como: `https://script.google.com/macros/s/...`)
 
-#### Indicador no Header
-- Mostra quantos itens foram modificados
-- Aparece apenas quando há modificações
-- Animação pulsante para chamar atenção
+### 2. Executar o Projeto Next.js
 
-#### Configurações Avançadas
-- **Reset de Dados Originais**: Permite marcar todos os itens como sincronizados
-- **Nome Padrão do Colaborador**: Salva o nome para uso futuro
-- **Sincronização Automática**: Opção para sincronizar automaticamente
-
-### Estrutura dos Dados
-
-#### Dados Originais (originalData)
-```typescript
-{
-  "Açúcar": {
-    category: "INSUMOS",
-    quantity: 5,
-    unit: "kg",
-    minStock: 2
-  }
-}
+```bash
+cd inventory-app
+npm install
+npm run dev
 ```
 
-#### Dados Atuais (stockData)
-```typescript
-{
-  "Açúcar": {
-    category: "INSUMOS",
-    quantity: 10, // Modificado
-    unit: "kg",
-    minStock: 2
-  }
-}
+### 3. Configurar no Aplicativo
+
+1. Abra http://localhost:3000
+2. Clique no botão **⚙️ Configurações**
+3. Cole a URL do Google Apps Script no campo "URL da API"
+4. Configure o nome da aba (padrão: `Estoque_Hamburgeria`)
+5. Clique em **Salvar**
+
+## 📊 Como Usar
+
+### Primeira Vez
+1. Configure a URL da API (veja acima)
+2. Clique em **☁️ Buscar Dados** para carregar os itens da planilha
+3. Se a planilha estiver vazia, os 69 itens pré-cadastrados serão exibidos
+
+### Atualizar Quantidades
+- Use os botões **+** e **-** para ajustar
+- Ou digite diretamente no campo de quantidade
+
+### Adicionar Novo Item
+1. Clique em **➕ Adicionar Item**
+2. Preencha: Nome, Categoria, Unidade, Estoque Mínimo
+3. Clique em **Adicionar**
+
+### Deletar Item
+1. Clique no botão **🗑️** no card do item
+2. Confirme a exclusão
+
+### Sincronizar com Google Sheets
+1. Faça as alterações nas quantidades
+2. Clique em **🔄 Sincronizar**
+3. Digite o nome do colaborador
+4. Adicione observações (opcional)
+5. Clique em **Sincronizar**
+6. Apenas os itens modificados serão enviados!
+
+### Buscar Dados Atualizados
+- Clique em **☁️ Buscar Dados** para puxar os dados mais recentes da planilha
+
+### Exportar CSV
+- Clique em **📥 Exportar CSV** para baixar todos os dados
+
+### Abrir Planilha
+- Clique em **🔗 Abrir Planilha** para ver a planilha no Google Sheets
+
+## 📦 Estrutura do Projeto
+
+```
+inventory-app/
+├── app/
+│   ├── components/
+│   │   ├── Controls.tsx       # Busca, filtros e botões de ação
+│   │   ├── Header.tsx         # Cabeçalho com estatísticas
+│   │   ├── LoadingScreen.tsx  # Tela de carregamento
+│   │   ├── StockGrid.tsx      # Grid de itens
+│   │   └── StockItemCard.tsx  # Card individual de item
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx               # Página principal com lógica
+├── inventory-script.js        # Script do Google Apps Script
+└── README.md
 ```
 
-#### Itens Modificados Detectados
-```typescript
-{
-  "1": {
-    id: "1",
-    name: "Açúcar",
-    category: "INSUMOS",
-    quantity: 10,
-    unit: "kg",
-    minStock: 2
-  }
-}
-```
+## 📊 Categorias de Estoque
 
-### APIs do Google Apps Script
+- **CARNES** (4 itens): Blend fraldinha, Blend acém, Hamburguer vegetariano, Frango empanado
+- **PÃES** (2 itens): Pão brioche, Pão Australiano
+- **QUEIJOS** (4 itens): Queijo prato, Cheddar, Parmesão, Bacon
+- **INSUMOS** (18 itens): Sal, Açúcar, Óleos, Molhos, Condimentos
+- **PORÇÕES** (4 itens): Batata frita, Onion rings, Dadinho de tapioca, Crispy de gouda
+- **HORTIFRUTI** (7 itens): Alface, Alho, Cebola, Tomate, Temperos
+- **CONDIMENTOS** (4 itens): Sachês de molhos, Geléia de pimenta
+- **OUTROS** (2 itens): Sal grosso, Picles
+- **EMBALAGENS** (24 itens): Guardanapos, Copos, Embalagens, Produtos de limpeza
 
-O sistema envia dados no formato esperado pelo script do Google Apps Script:
+## 🎨 Tecnologias
 
-#### POST Request
-```javascript
-{
-  "collaborator": "Nome do Colaborador",
-  "notes": "Observações sobre a contagem",
-  "stockData": {
-    "1": {
-      "id": "1",
-      "name": "Nome do Item",
-      "category": "Categoria",
-      "quantity": 10,
-      "unit": "kg",
-      "minStock": 2
-    }
-  }
-}
-```
+- Next.js 15
+- TypeScript
+- Tailwind CSS
+- SweetAlert2
+- FontAwesome
+- Google Apps Script
+- Google Sheets
 
-#### GET Request
-Retorna todos os dados da planilha para sincronização inicial.
+## 📝 Observações
 
-### Benefícios
-
-1. **Eficiência**: Envia apenas dados modificados
-2. **Performance**: Reduz o tráfego de rede
-3. **Transparência**: Mostra claramente o que será enviado
-4. **Controle**: Permite resetar dados originais quando necessário
-5. **Feedback Visual**: Indica claramente quais itens foram modificados
-
-### Como Usar
-
-1. **Modificar Itens**: Use os botões +/- ou digite diretamente no campo quantidade
-2. **Ver Modificações**: Itens modificados são destacados visualmente
-3. **Sincronizar**: Clique no botão de sincronização para enviar apenas os itens modificados
-4. **Reset**: Use o botão "Resetar" nas configurações para marcar todos como sincronizados
-
-### Armazenamento Local
-
-O sistema salva automaticamente:
-- `kitchenStockData`: Dados atuais do estoque
-- `originalStockData`: Dados originais (última sincronização)
-- `collaboratorName`: Nome do colaborador
-- `appsScriptConfig`: Configurações do sistema
+- O projeto `my-app` original foi mantido intacto
+- Este é um projeto completamente novo e independente
+- Todos os 69 itens da lista foram incluídos
+- O estoque mínimo foi configurado conforme a lista fornecida
+- A sincronização envia apenas itens modificados (otimizado)
+- Os dados são salvos no localStorage para persistência local

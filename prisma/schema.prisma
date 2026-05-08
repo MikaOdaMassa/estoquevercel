@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  category        String
+  location        String         @default("COZINHA") // "COZINHA" or "BAR"
+  unit            String
+  currentQuantity Float          @default(0)
+  unitCost        Float          @default(0)
+  salePrice       Float          @default(0)
+  minStock        Float          @default(0)
+  shifts          ShiftProduct[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model Shift {
+  id                   String         @id @default(uuid())
+  date                 DateTime       @default(now())
+  location             String         @default("COZINHA") // "COZINHA" or "BAR"
+  responsible          String
+  period               String
+  status               String         @default("AGUARDANDO_FATURAMENTO") // "AGUARDANDO_FATURAMENTO", "CONCLUIDO"
+  totalSales           Float          @default(0) // Used as gross sales if needed, or total calculated
+  targetCmvPercentage  Float          @default(30)
+  
+  // Financial breakdown
+  ifoodNet             Float          @default(0)
+  ninetynineNet        Float          @default(0)
+  counterNet           Float          @default(0)
+  machineFees          Float          @default(0)
+  discounts            Float          @default(0)
+  realFinalSales       Float          @default(0)
+  
+  products             ShiftProduct[]
+  createdAt            DateTime       @default(now())
+}
+
+model ShiftProduct {
+  id              String  @id @default(uuid())
+  shiftId         String
+  productId       String
+  shift           Shift   @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  product         Product @relation(fields: [productId], references: [id])
+  initialStock    Float
+  entries         Float   @default(0)
+  finalStock      Float
+  consumption     Float
+  unitCostAtTime  Float
+  totalCost       Float
+
+  @@unique([shiftId, productId])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      String   @default("OPERATOR") // "ADMIN" or "OPERATOR"
+  location  String   @default("COZINHA")  // "COZINHA" or "BAR"
+  createdAt DateTime @default(now())
+}
