@@ -57,7 +57,7 @@ const Controls = memo(function Controls({
 
   return (
     <div className="bg-white rounded-[32px] p-8 mb-8 shadow-xl border border-gray-100">
-      
+
       {/* Busca e Botão Adicionar */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="relative flex-1">
@@ -70,8 +70,8 @@ const Controls = memo(function Controls({
             onChange={handleSearchChange}
           />
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)} 
+        <button
+          onClick={() => setShowAddModal(true)}
           className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <i className="fas fa-plus"></i> Novo Item
@@ -81,26 +81,26 @@ const Controls = memo(function Controls({
       {/* Filtros Rápidos */}
       <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
-          <button 
-            onClick={() => handleStatusChange('')} 
+          <button
+            onClick={() => handleStatusChange('')}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${statusFilter === '' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
           >
             Todos
           </button>
-          <button 
-            onClick={() => handleStatusChange('available')} 
+          <button
+            onClick={() => handleStatusChange('available')}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${statusFilter === 'available' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
           >
             Disponível
           </button>
-          <button 
-            onClick={() => handleStatusChange('low')} 
+          <button
+            onClick={() => handleStatusChange('low')}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${statusFilter === 'low' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
           >
             Baixo
           </button>
-          <button 
-            onClick={() => handleStatusChange('out')} 
+          <button
+            onClick={() => handleStatusChange('out')}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${statusFilter === 'out' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
           >
             Sem Estoque
@@ -111,9 +111,9 @@ const Controls = memo(function Controls({
           {categoryList.map(cat => {
             const isActive = normalize(currentCategory) === normalize(cat);
             return (
-              <button 
-                key={cat} 
-                onClick={() => handleCategoryChange(cat)} 
+              <button
+                key={cat}
+                onClick={() => handleCategoryChange(cat)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${isActive ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 {cat === 'all' ? 'Categorias' : cat}
@@ -126,8 +126,8 @@ const Controls = memo(function Controls({
           <button onClick={fetchLatestData} disabled={fetchLoading} className="text-indigo-600 hover:text-indigo-800 transition-colors p-2 cursor-pointer">
             <i className={`fas fa-sync-alt ${fetchLoading ? 'fa-spin' : ''}`}></i>
           </button>
-          <select 
-            value={currentSort} 
+          <select
+            value={currentSort}
             onChange={(e) => handleSortChange(e.target.value)}
             className="bg-transparent border-none text-xs font-bold text-gray-500 uppercase tracking-widest outline-none cursor-pointer"
           >

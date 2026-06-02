@@ -28,7 +28,7 @@ export default function InventoryPage() {
   const [currentSort, setCurrentSort] = useState('name');
   const [currentLocation, setCurrentLocation] = useState('COZINHA');
   const [userRole, setUserRole] = useState('OPERATOR');
-  
+
   // Modal de Produto (Unificação)
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<StockItem> | null>(null);
@@ -83,15 +83,15 @@ export default function InventoryPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            id: editingProduct.id,
-            name: editingProduct.name,
-            category: editingProduct.category,
-            location: editingProduct.location || currentLocation,
-            unit: editingProduct.unit,
-            currentQuantity: editingProduct.quantity,
-            unitCost: editingProduct.unitCost,
-            salePrice: editingProduct.salePrice,
-            minStock: editingProduct.minStock
+          id: editingProduct.id,
+          name: editingProduct.name,
+          category: editingProduct.category,
+          location: editingProduct.location || currentLocation,
+          unit: editingProduct.unit,
+          currentQuantity: editingProduct.quantity,
+          unitCost: editingProduct.unitCost,
+          salePrice: editingProduct.salePrice,
+          minStock: editingProduct.minStock
         }),
       });
       const json = await res.json();
@@ -151,13 +151,13 @@ export default function InventoryPage() {
   return (
     <div className="min-h-screen bg-slate-50 py-6 px-4 md:py-10 md:px-5 pb-24">
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        
+
         {/* Tab Switcher */}
         {userRole === 'ADMIN' && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: '#e2e8f0', padding: '6px', borderRadius: '16px', width: 'fit-content' }}>
-            <button 
+            <button
               onClick={() => setCurrentLocation('COZINHA')}
-              style={{ 
+              style={{
                 padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
                 background: currentLocation === 'COZINHA' ? '#fff' : 'transparent',
                 color: currentLocation === 'COZINHA' ? '#4f46e5' : '#64748b',
@@ -167,9 +167,9 @@ export default function InventoryPage() {
             >
               <i className="fas fa-utensils" style={{ marginRight: '8px' }}></i> Cozinha
             </button>
-            <button 
+            <button
               onClick={() => setCurrentLocation('BAR')}
-              style={{ 
+              style={{
                 padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
                 background: currentLocation === 'BAR' ? '#fff' : 'transparent',
                 color: currentLocation === 'BAR' ? '#4f46e5' : '#64748b',
@@ -182,15 +182,15 @@ export default function InventoryPage() {
           </div>
         )}
 
-        <Header 
+        <Header
           totalItems={stats.total}
           availableItems={stats.available}
           lowStockItems={stats.low}
           outOfStockItems={stats.out}
           modifiedItems={0}
         />
-        
-        <Controls 
+
+        <Controls
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           currentCategory={currentCategory}
@@ -206,13 +206,13 @@ export default function InventoryPage() {
         />
 
         <div style={{ marginTop: '20px' }}>
-            <StockGrid 
-                items={filteredItems} 
-                onEdit={(item) => { 
-                    setEditingProduct(item); 
-                    setShowProductModal(true); 
-                }} 
-            />
+          <StockGrid
+            items={filteredItems}
+            onEdit={(item) => {
+              setEditingProduct(item);
+              setShowProductModal(true);
+            }}
+          />
         </div>
 
         {/* Modal Unificado de Gestão de Produto */}
@@ -223,21 +223,21 @@ export default function InventoryPage() {
                 <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#1e293b' }}>{editingProduct?.id ? 'Editar Item' : 'Cadastrar Novo Item'}</h2>
                 <button onClick={() => setShowProductModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', color: '#64748b' }}><i className="fas fa-times"></i></button>
               </div>
-              
+
               <form onSubmit={handleSaveProduct} style={{ display: 'grid', gap: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Nome do Insumo</label>
-                  <input type="text" required value={editingProduct?.name || ''} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none', fontSize: '16px' }} placeholder="Ex: Queijo Mussarela" />
+                  <input type="text" required value={editingProduct?.name || ''} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none', fontSize: '16px' }} placeholder="Ex: Queijo Mussarela" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Categoria</label>
-                    <input type="text" required value={editingProduct?.category || ''} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} placeholder="Ex: Frios" />
+                    <input type="text" required value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} placeholder="Ex: Frios" />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Localização</label>
-                    <select required value={editingProduct?.location || currentLocation} onChange={e => setEditingProduct({...editingProduct, location: e.target.value})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none', background: '#fff' }}>
+                    <select required value={editingProduct?.location || currentLocation} onChange={e => setEditingProduct({ ...editingProduct, location: e.target.value })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none', background: '#fff' }}>
                       <option value="COZINHA">Cozinha</option>
                       <option value="BAR">Bar</option>
                     </select>
@@ -247,7 +247,7 @@ export default function InventoryPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Unidade</label>
-                    <select required value={editingProduct?.unit || ''} onChange={e => setEditingProduct({...editingProduct, unit: e.target.value})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none', background: '#fff' }}>
+                    <select required value={editingProduct?.unit || ''} onChange={e => setEditingProduct({ ...editingProduct, unit: e.target.value })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none', background: '#fff' }}>
                       <option value="" disabled>Selecione...</option>
                       <option value="un">un (Unidade)</option>
                       <option value="kg">kg (Quilograma)</option>
@@ -267,24 +267,24 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Estoque Mínimo</label>
-                    <input type="number" step="0.01" value={editingProduct?.minStock || 0} onChange={e => setEditingProduct({...editingProduct, minStock: parseFloat(e.target.value)})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
+                    <input type="number" step="0.01" value={editingProduct?.minStock || 0} onChange={e => setEditingProduct({ ...editingProduct, minStock: parseFloat(e.target.value) })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Custo Unitário (R$)</label>
-                    <input type="number" step="0.01" value={editingProduct?.unitCost || 0} onChange={e => setEditingProduct({...editingProduct, unitCost: parseFloat(e.target.value)})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
+                    <input type="number" step="0.01" value={editingProduct?.unitCost || 0} onChange={e => setEditingProduct({ ...editingProduct, unitCost: parseFloat(e.target.value) })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Preço Venda (R$)</label>
-                    <input type="number" step="0.01" value={editingProduct?.salePrice || 0} onChange={e => setEditingProduct({...editingProduct, salePrice: parseFloat(e.target.value)})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
+                    <input type="number" step="0.01" value={editingProduct?.salePrice || 0} onChange={e => setEditingProduct({ ...editingProduct, salePrice: parseFloat(e.target.value) })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
                   </div>
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Qtd. em Estoque</label>
-                    <input type="number" step="0.01" value={editingProduct?.quantity || 0} onChange={e => setEditingProduct({...editingProduct, quantity: parseFloat(e.target.value)})} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Qtd. em Estoque</label>
+                  <input type="number" step="0.01" value={editingProduct?.quantity || 0} onChange={e => setEditingProduct({ ...editingProduct, quantity: parseFloat(e.target.value) })} style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '2px solid #f1f5f9', outline: 'none' }} />
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-4 mt-6">
