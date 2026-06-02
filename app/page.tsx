@@ -104,11 +104,25 @@ export default function InventoryPage() {
     }
   };
 
+  const categoriesList = useMemo(() => {
+    const fixed = ['CARNES', 'PÃES', 'QUEIJOS', 'INSUMOS', 'PORÇÕES', 'HORTIFRUTI', 'CONDIMENTOS', 'EMBALAGENS', 'LIMPEZA'];
+    const existing = stockItems
+      .map(item => item.category?.trim().toUpperCase())
+      .filter(Boolean);
+    const combined = Array.from(new Set([...fixed, ...existing]));
+    return ['all', ...combined];
+  }, [stockItems]);
+
   const filteredItems = useMemo(() => {
+    const normalize = (str: string) => {
+      return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    };
+
     return stockItems
       .filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = currentCategory === 'all' || item.category === currentCategory;
+        const matchesCategory = currentCategory === 'all' || 
+          normalize(item.category) === normalize(currentCategory);
         
         let matchesStatus = true;
         if (statusFilter === 'available') matchesStatus = item.quantity > item.minStock;
@@ -188,6 +202,7 @@ export default function InventoryPage() {
           setShowAddModal={() => { setEditingProduct({ location: currentLocation }); setShowProductModal(true); }}
           fetchLatestData={fetchStock}
           fetchLoading={loading}
+          categories={categoriesList}
         />
 
         <div style={{ marginTop: '20px' }}>

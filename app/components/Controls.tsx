@@ -14,6 +14,7 @@ interface ControlsProps {
   setShowAddModal: (show: boolean) => void;
   fetchLatestData: () => Promise<void>;
   fetchLoading: boolean;
+  categories?: string[];
 }
 
 const Controls = memo(function Controls({
@@ -28,6 +29,7 @@ const Controls = memo(function Controls({
   setShowAddModal,
   fetchLatestData,
   fetchLoading,
+  categories,
 }: ControlsProps) {
   const [filtersMinimized, setFiltersMinimized] = useState(false);
 
@@ -46,6 +48,12 @@ const Controls = memo(function Controls({
   const handleSortChange = useCallback((sort: string) => {
     setCurrentSort(sort);
   }, [setCurrentSort]);
+
+  const normalize = (str: string) => {
+    return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  };
+
+  const categoryList = categories || ['all', 'CARNES', 'PÃES', 'QUEIJOS', 'INSUMOS', 'PORÇÕES', 'HORTIFRUTI', 'CONDIMENTOS', 'EMBALAGENS'];
 
   return (
     <div className="bg-white rounded-[32px] p-8 mb-8 shadow-xl border border-gray-100">
@@ -100,15 +108,18 @@ const Controls = memo(function Controls({
         </div>
 
         <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 overflow-x-auto max-w-full">
-          {['all','CARNES','PÃES','QUEIJOS','INSUMOS','PORÇÕES','HORTIFRUTI','CONDIMENTOS','EMBALAGENS'].map(cat => (
-            <button 
-              key={cat} 
-              onClick={() => handleCategoryChange(cat)} 
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${currentCategory === cat ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              {cat === 'all' ? 'Categorias' : cat}
-            </button>
-          ))}
+          {categoryList.map(cat => {
+            const isActive = normalize(currentCategory) === normalize(cat);
+            return (
+              <button 
+                key={cat} 
+                onClick={() => handleCategoryChange(cat)} 
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${isActive ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                {cat === 'all' ? 'Categorias' : cat}
+              </button>
+            );
+          })}
         </div>
 
         <div className="ml-auto flex items-center gap-4">
