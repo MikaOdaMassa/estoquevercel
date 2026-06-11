@@ -66,9 +66,17 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const consolidatedShiftIds = Array.isArray(body.consolidatedShiftIds)
-      ? Array.from(new Set(body.consolidatedShiftIds.filter((shiftId: unknown): shiftId is string => typeof shiftId === 'string' && shiftId.trim().length > 0)))
+    const rawConsolidatedShiftIds: unknown[] = Array.isArray(body.consolidatedShiftIds)
+      ? body.consolidatedShiftIds
       : [];
+    const consolidatedShiftIds: string[] = Array.from(
+      new Set(
+        rawConsolidatedShiftIds
+          .filter((shiftId): shiftId is string => typeof shiftId === 'string')
+          .map((shiftId) => shiftId.trim())
+          .filter((shiftId) => shiftId.length > 0)
+      )
+    );
 
     const financialData = {
       status: 'CONCLUIDO',
