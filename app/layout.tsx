@@ -6,8 +6,8 @@ import { isAdmin } from "./actions/auth";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
-  title: "Cozinha Janela – Gestão Integrada",
-  description: "Sistema integrado de estoque e CMV – Cozinha Janela",
+  title: "Porks – Gestão Integrada",
+  description: "Sistema integrado de estoque e CMV – Porks",
 };
 
 export default async function RootLayout({

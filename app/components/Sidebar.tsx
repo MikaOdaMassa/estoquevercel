@@ -151,7 +151,7 @@ export default function Sidebar({ isAdmin, username }: { isAdmin: boolean; usern
                 <i className="fas fa-utensils" style={{ color: '#fff', fontSize: 15 }} />
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>Cozinha Janela</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>Porks</div>
                 <div style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>Gestão Integrada</div>
               </div>
             </div>

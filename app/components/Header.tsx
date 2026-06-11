@@ -11,7 +11,7 @@ export default function Header({ totalItems, availableItems, lowStockItems, outO
     <header className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl p-10 mb-10 shadow-2xl text-center border border-purple-200">
       <div className="flex items-center justify-center mb-6">
         <i className="fas fa-warehouse text-5xl text-white mr-4 drop-shadow-md"></i>
-        <h1 className="text-5xl font-bold text-white drop-shadow-lg">Estoque Cozinha Janela</h1>
+        <h1 className="text-5xl font-bold text-white drop-shadow-lg">Estoque Porks</h1>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mt-8">
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-2xl shadow-lg border border-blue-200">

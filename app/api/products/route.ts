@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Erro inesperado';
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -10,10 +16,13 @@ export async function GET(request: Request) {
       where: location ? { location } : {},
       orderBy: { name: 'asc' },
     });
-    return NextResponse.json({ result: 'success', data: products });
-  } catch (error: any) {
+    return NextResponse.json(
+      { result: 'success', data: products },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  } catch (error: unknown) {
     console.error('API Error:', error);
-    return NextResponse.json({ result: 'error', message: error.message }, { status: 500 });
+    return NextResponse.json({ result: 'error', message: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -34,7 +43,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({ result: 'success', data: product });
     }
-  } catch (error: any) {
-    return NextResponse.json({ result: 'error', message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ result: 'error', message: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -49,7 +49,8 @@ const Controls = memo(function Controls({
     setCurrentSort(sort);
   }, [setCurrentSort]);
 
-  const normalize = (str: string) => {
+  const normalize = (str: string | null | undefined) => {
+    if (!str) return '';
     return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   };
 
@@ -107,19 +108,20 @@ const Controls = memo(function Controls({
           </button>
         </div>
 
-        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 overflow-x-auto max-w-full">
-          {categoryList.map(cat => {
-            const isActive = normalize(currentCategory) === normalize(cat);
-            return (
-              <button
-                key={cat}
-                onClick={() => handleCategoryChange(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${isActive ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                {cat === 'all' ? 'Categorias' : cat}
-              </button>
-            );
-          })}
+        <div className="relative flex items-center bg-gray-50 rounded-2xl border border-gray-100">
+          <select
+            value={currentCategory}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className="appearance-none pl-4 pr-10 py-3 bg-transparent rounded-2xl text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-700 outline-none cursor-pointer transition-all"
+            style={{ minWidth: "160px" }}
+          >
+            {categoryList.map(cat => (
+              <option key={cat} value={cat} className="text-gray-700 font-semibold bg-white uppercase">
+                {cat === 'all' ? '📋 Categorias' : cat}
+              </option>
+            ))}
+          </select>
+          <i className="fas fa-chevron-down absolute right-4 text-[10px] text-gray-400 pointer-events-none"></i>
         </div>
 
         <div className="ml-auto flex items-center gap-4">

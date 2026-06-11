@@ -1,6 +1,6 @@
-# 🍔 Estoque Cozinha Janela
+# 🍔 Estoque Porks
 
-Sistema completo de gestão de inventário para Cozinha Janela, integrado com Google Sheets.
+Sistema completo de gestão de inventário para Porks, integrado com Google Sheets.
 
 ## 📋 Funcionalidades Completas
 

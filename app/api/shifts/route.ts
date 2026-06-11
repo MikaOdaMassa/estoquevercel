@@ -2,16 +2,47 @@ import { NextResponse } from 'next/server';
 import { prisma } from '../../lib/prisma';
 import { cookies } from 'next/headers';
 
+type TurnoProdutoPayload = {
+  produtoId?: string;
+  produtoNome?: string;
+  estoqueInicial: number;
+  entradas: number;
+  estoqueFinal: number;
+  custoAplicado: number;
+  consumo: number;
+  custo: number;
+};
+
+const VALID_LOCATIONS = ['COZINHA', 'BAR'] as const;
+type Location = (typeof VALID_LOCATIONS)[number];
+
+function isLocation(value: string | null | undefined): value is Location {
+  return VALID_LOCATIONS.includes(value as Location);
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Erro inesperado';
+}
+
+function parseBrazilianDate(date: string) {
+  const [day, month, year] = date.split('/').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const location = searchParams.get('location');
+  const requestedLocation = searchParams.get('location');
   
   const cookieStore = await cookies();
   const isAdmin = cookieStore.get('user_role')?.value === 'ADMIN';
-  
-  if (!isAdmin) {
-    return NextResponse.json({ result: 'error', message: 'Acesso negado. Requer privilégios de administrador.' }, { status: 403 });
-  }
+  const userLocation = cookieStore.get('user_location')?.value || 'COZINHA';
+  const location = isAdmin
+    ? isLocation(requestedLocation)
+      ? requestedLocation
+      : undefined
+    : isLocation(userLocation)
+      ? userLocation
+      : 'COZINHA';
 
   try {
     const shifts = await prisma.shift.findMany({
@@ -30,6 +61,7 @@ export async function GET(request: Request) {
     const formatted = shifts.map(s => ({
       ID: s.id,
       Data: s.date.toLocaleDateString('pt-BR'),
+      Local: s.location,
       Responsavel: s.responsible,
       Periodo: s.period,
       Status: s.status,
@@ -55,8 +87,8 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json({ result: 'success', data: formatted });
-  } catch (error: any) {
-    return NextResponse.json({ result: 'error', message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ result: 'error', message: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -70,15 +102,24 @@ export async function POST(request: Request) {
     }
 
     const { data, responsavel, periodo, valorVendido = 0, percentualMeta = 30, produtos, location } = turno;
+    const cookieStore = await cookies();
+    const isAdmin = cookieStore.get('user_role')?.value === 'ADMIN';
+    const userLocation = cookieStore.get('user_location')?.value || 'COZINHA';
+    const requestedShiftLocation = isLocation(location) ? location : 'COZINHA';
+    const shiftLocation = isAdmin
+      ? requestedShiftLocation
+      : isLocation(userLocation)
+        ? userLocation
+        : 'COZINHA';
 
     // Use a transaction to ensure data integrity
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create the shift
       const shift = await tx.shift.create({
         data: {
-          date: new Date(data.split('/').reverse().join('-')), // Converte dd/mm/yyyy para yyyy-mm-dd
+          date: parseBrazilianDate(data),
           responsible: responsavel,
-          location: location || 'COZINHA',
+          location: shiftLocation,
           period: periodo,
           totalSales: valorVendido,
           targetCmvPercentage: percentualMeta,
@@ -87,13 +128,20 @@ export async function POST(request: Request) {
       });
 
       // 2. Process each product
-      for (const p of produtos) {
-        // Find product by name (assuming name is unique as per schema)
-        const product = await tx.product.findUnique({
-          where: { name: p.produtoNome }
-        });
+      for (const p of produtos as TurnoProdutoPayload[]) {
+        const product = p.produtoId
+          ? await tx.product.findUnique({ where: { id: p.produtoId } })
+          : p.produtoNome
+            ? await tx.product.findUnique({ where: { name: p.produtoNome } })
+            : null;
 
-        if (!product) continue;
+        if (!product) {
+          throw new Error(`Produto não encontrado para atualizar estoque: ${p.produtoNome || p.produtoId || 'sem identificação'}`);
+        }
+
+        if (product.location !== shiftLocation) {
+          throw new Error(`Produto "${product.name}" pertence a ${product.location}, mas o turno é de ${shiftLocation}.`);
+        }
 
         // Save shift product snapshot
         await tx.shiftProduct.create({
@@ -122,8 +170,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ result: 'success', data: result });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Save Shift Error:', error);
-    return NextResponse.json({ result: 'error', message: error.message }, { status: 500 });
+    return NextResponse.json({ result: 'error', message: getErrorMessage(error) }, { status: 500 });
   }
 }

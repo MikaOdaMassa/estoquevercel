@@ -1,34 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { getRole, getUserLocation } from '../../actions/auth';
+import { Turno, getLocationLabel, getTurnoCusto, groupTurnosConsolidados } from '../financial';
 
-interface TurnoProduto {
-  produtoNome: string;
-  estoqueInicial: number;
-  entradas: number;
-  estoqueFinal: number;
-  custoAplicado: number;
-  consumo: number;
-  custo: number;
-}
+type LocationFilter = 'ALL' | 'COZINHA' | 'BAR';
 
-interface Turno {
-  ID: string;
-  Data: string;
-  Responsavel: string;
-  Periodo: string;
-  Status: string;
-  ValorVendido: number;
-  PercentualMeta: number;
-  IfoodNet?: number;
-  NinetynineNet?: number;
-  CounterNet?: number;
-  MachineFees?: number;
-  Discounts?: number;
-  RealFinalSales?: number;
-  Produtos: TurnoProduto[];
-}
+const LOCATION_OPTIONS: { value: LocationFilter; label: string; icon: string }[] = [
+  { value: 'ALL', label: 'Consolidado', icon: 'fa-layer-group' },
+  { value: 'COZINHA', label: 'Cozinha', icon: 'fa-utensils' },
+  { value: 'BAR', label: 'Bar', icon: 'fa-glass-martini-alt' },
+];
 
 const PERIODOS_ICONS: Record<string, string> = {
   'Manhã': 'fa-sun',
@@ -36,15 +19,13 @@ const PERIODOS_ICONS: Record<string, string> = {
   'Noite': 'fa-moon',
 };
 
-import { getRole, getUserLocation } from '../../actions/auth';
-
 export default function HistoricoPage() {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [erro, setErro] = useState('');
   const [expandido, setExpandido] = useState<string | null>(null);
-  const [currentLocation, setCurrentLocation] = useState('COZINHA');
+  const [currentLocation, setCurrentLocation] = useState<LocationFilter>('ALL');
   const [userRole, setUserRole] = useState('OPERATOR');
 
   useEffect(() => {
@@ -53,7 +34,7 @@ export default function HistoricoPage() {
       const loc = await getUserLocation();
       setUserRole(role);
       if (role === 'OPERATOR') {
-        setCurrentLocation(loc);
+        setCurrentLocation(loc === 'BAR' ? 'BAR' : 'COZINHA');
       }
     };
     init();
@@ -63,11 +44,15 @@ export default function HistoricoPage() {
     loadTurnos();
   }, [currentLocation]);
 
+  const turnosExibidos = useMemo(() => {
+    return currentLocation === 'ALL' ? groupTurnosConsolidados(turnos) : turnos;
+  }, [currentLocation, turnos]);
+
   async function loadTurnos() {
     setLoading(true);
     setErro('');
     try {
-      const res = await fetch(`/api/shifts?location=${currentLocation}`);
+      const res = await fetch(`/api/shifts?location=${currentLocation}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.result === 'success' && Array.isArray(json.data)) {
         setTurnos(json.data);
@@ -81,11 +66,12 @@ export default function HistoricoPage() {
     }
   }
 
-  async function handleDelete(turnoId: string, data: string, periodo: string) {
+  async function handleDelete(turnoIds: string[], data: string, periodo: string) {
     const Swal = (await import('sweetalert2')).default;
+    const isConsolidatedDelete = turnoIds.length > 1;
     const result = await Swal.fire({
-      title: 'Excluir turno do Banco?',
-      html: `<strong>${data} — ${periodo}</strong><br/>Isso não afetará o estoque atual dos produtos.`,
+      title: isConsolidatedDelete ? 'Excluir fechamento consolidado?' : 'Excluir turno do Banco?',
+      html: `<strong>${data} — ${periodo}</strong><br/>${isConsolidatedDelete ? 'Cozinha e bar serão removidos do histórico.' : 'Isso não afetará o estoque atual dos produtos.'}`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Sim, excluir',
@@ -95,18 +81,20 @@ export default function HistoricoPage() {
 
     if (!result.isConfirmed) return;
 
-    setDeleting(turnoId);
+    const deletingKey = turnoIds.join('__');
+    setDeleting(deletingKey);
     try {
-      const res = await fetch(`/api/shifts/${turnoId}`, {
-        method: 'DELETE',
-      });
-      const json = await res.json();
+      const responses = await Promise.all(
+        turnoIds.map(turnoId => fetch(`/api/shifts/${turnoId}`, { method: 'DELETE' }))
+      );
+      const results = await Promise.all(responses.map(res => res.json()));
+      const failed = results.find(json => json.result !== 'success');
 
-      if (json.result === 'success') {
-        setTurnos(prev => prev.filter(t => t.ID !== turnoId));
+      if (!failed) {
+        setTurnos(prev => prev.filter(t => !turnoIds.includes(t.ID)));
         await Swal.fire({ icon: 'success', title: 'Turno removido!', timer: 1500, showConfirmButton: false });
       } else {
-        await Swal.fire({ icon: 'error', title: 'Erro', text: json.message });
+        await Swal.fire({ icon: 'error', title: 'Erro', text: failed.message });
       }
     } catch (e: any) {
       console.error('Delete error:', e);
@@ -130,36 +118,29 @@ export default function HistoricoPage() {
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#1e293b', margin: 0 }}>Histórico de Turnos</h1>
-            <p style={{ color: '#64748b', marginTop: '4px' }}>Base de dados local (Produção)</p>
+            <p style={{ color: '#64748b', marginTop: '4px' }}>
+              {currentLocation === 'ALL' ? 'Todos os turnos de Cozinha e Bar' : `Turnos de ${getLocationLabel(currentLocation)}`}
+            </p>
           </div>
 
           {/* Tab Switcher */}
           {userRole === 'ADMIN' && (
-            <div style={{ display: 'flex', gap: '8px', background: '#e2e8f0', padding: '6px', borderRadius: '16px', width: 'fit-content' }}>
-              <button 
-                onClick={() => setCurrentLocation('COZINHA')}
-                style={{ 
-                  padding: '8px 20px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
-                  background: currentLocation === 'COZINHA' ? '#fff' : 'transparent',
-                  color: currentLocation === 'COZINHA' ? '#4f46e5' : '#64748b',
-                  boxShadow: currentLocation === 'COZINHA' ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.2s', fontSize: '13px'
-                }}
-              >
-                <i className="fas fa-utensils" style={{ marginRight: '8px' }}></i> Cozinha
-              </button>
-              <button 
-                onClick={() => setCurrentLocation('BAR')}
-                style={{ 
-                  padding: '8px 20px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
-                  background: currentLocation === 'BAR' ? '#fff' : 'transparent',
-                  color: currentLocation === 'BAR' ? '#4f46e5' : '#64748b',
-                  boxShadow: currentLocation === 'BAR' ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.2s', fontSize: '14px'
-                }}
-              >
-                <i className="fas fa-glass-martini-alt" style={{ marginRight: '8px' }}></i> Bar
-              </button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', background: '#e2e8f0', padding: '6px', borderRadius: '16px', width: 'fit-content', maxWidth: '100%' }}>
+              {LOCATION_OPTIONS.map(option => (
+                <button
+                  key={option.value}
+                  onClick={() => setCurrentLocation(option.value)}
+                  style={{
+                    padding: '8px 16px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
+                    background: currentLocation === option.value ? '#fff' : 'transparent',
+                    color: currentLocation === option.value ? '#4f46e5' : '#64748b',
+                    boxShadow: currentLocation === option.value ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.2s', fontSize: '13px', whiteSpace: 'nowrap'
+                  }}
+                >
+                  <i className={`fas ${option.icon}`} style={{ marginRight: '8px' }}></i> {option.label}
+                </button>
+              ))}
             </div>
           )}
 
@@ -171,12 +152,15 @@ export default function HistoricoPage() {
         {erro && <div style={{ background: '#fef2f2', color: '#dc2626', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>{erro}</div>}
 
         <div style={{ display: 'grid', gap: '16px' }}>
-          {turnos.map((turno, index) => {
+          {turnosExibidos.map((turno, index) => {
             const vVendido = turno.Status === 'CONCLUIDO' ? Number(turno.RealFinalSales) : 0;
-            const custo = turno.Produtos?.reduce((a, p) => a + (p.custo || 0), 0) || 0;
+            const custo = getTurnoCusto(turno);
             const cmvPerc = vVendido > 0 ? (custo / vVendido) * 100 : 0;
             const isOpen = expandido === turno.ID;
             const isPendente = turno.Status === 'AGUARDANDO_FATURAMENTO';
+            const turnoIds = turno.OriginalIds || [turno.ID];
+            const deletingKey = turnoIds.join('__');
+            const isConsolidated = turno.IsConsolidated || turno.Local === 'CONSOLIDADO';
 
             return (
               <div key={`${turno.ID}_${index}`} style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
@@ -190,6 +174,9 @@ export default function HistoricoPage() {
                     <div style={{ marginTop: '8px', display: 'inline-block', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, background: isPendente ? '#fef3c7' : '#d1fae5', color: isPendente ? '#d97706' : '#059669' }}>
                       {isPendente ? 'Aguardando Faturamento' : 'Concluído'}
                     </div>
+                    <div style={{ marginTop: '8px', marginLeft: '8px', display: 'inline-block', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, background: isConsolidated ? '#eef2ff' : turno.Local === 'BAR' ? '#eff6ff' : '#f0fdf4', color: isConsolidated ? '#4338ca' : turno.Local === 'BAR' ? '#2563eb' : '#15803d' }}>
+                      {isConsolidated ? 'Consolidado: Cozinha + Bar' : getLocationLabel(turno.Local)}
+                    </div>
                   </div>
                   <div style={{ textAlign: 'right', marginRight: '20px' }}>
                     <div style={{ fontSize: '13px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>CMV</div>
@@ -201,7 +188,7 @@ export default function HistoricoPage() {
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => setExpandido(isOpen ? null : turno.ID)} style={{ border: 'none', background: '#f1f5f9', color: '#475569', width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer' }}><i className={`fas ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i></button>
-                    <button onClick={() => handleDelete(turno.ID, turno.Data, turno.Periodo)} disabled={deleting === turno.ID} style={{ border: 'none', background: '#fef2f2', color: '#ef4444', width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer' }}><i className="fas fa-trash-alt"></i></button>
+                    <button onClick={() => handleDelete(turnoIds, turno.Data, turno.Periodo)} disabled={deleting === deletingKey} style={{ border: 'none', background: '#fef2f2', color: '#ef4444', width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer' }}><i className="fas fa-trash-alt"></i></button>
                   </div>
                 </div>
 
@@ -210,8 +197,8 @@ export default function HistoricoPage() {
                     {isPendente && userRole === 'ADMIN' && (
                       <div style={{ marginBottom: '20px', background: '#fffbeb', border: '1px solid #fde68a', padding: '16px', borderRadius: '12px' }}>
                         <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#92400e', fontWeight: 600 }}>Este turno ainda não teve seu faturamento registrado.</p>
-                        <Link href={`/cmv/fechamento-financeiro/${turno.ID}`} style={{ display: 'inline-block', background: '#d97706', color: '#fff', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '13px' }}>
-                          Realizar Fechamento Financeiro
+                        <Link href={`/cmv/fechamento-financeiro/${turno.FechamentoID || turno.ID}`} style={{ display: 'inline-block', background: '#d97706', color: '#fff', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '13px' }}>
+                          Realizar Fechamento Consolidado
                         </Link>
                       </div>
                     )}
@@ -238,7 +225,7 @@ export default function HistoricoPage() {
                           </tr>
                         ))}
                         <tr style={{ borderTop: '1px solid #e2e8f0' }}>
-                          <td colSpan={4} style={{ padding: '16px 0', fontWeight: 700, textAlign: 'right' }}>Custo Total Operacional:</td>
+                          <td colSpan={4} style={{ padding: '16px 0', fontWeight: 700, textAlign: 'right' }}>{isConsolidated ? 'Custo Operacional Consolidado:' : 'Custo Total Operacional:'}</td>
                           <td style={{ padding: '16px 0', textAlign: 'right', fontWeight: 800, color: '#ef4444', fontSize: '15px' }}>R$ {custo.toFixed(2)}</td>
                         </tr>
                       </tbody>

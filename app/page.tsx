@@ -19,6 +19,18 @@ export interface StockItem {
   salePrice: number;
 }
 
+interface ApiProduct {
+  id: string;
+  name: string;
+  category: string;
+  location: string;
+  currentQuantity: number;
+  unit: string;
+  minStock: number;
+  unitCost?: number;
+  salePrice?: number;
+}
+
 export default function InventoryPage() {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,10 +48,10 @@ export default function InventoryPage() {
   const fetchStock = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products?location=${currentLocation}`);
+      const res = await fetch(`/api/products?location=${currentLocation}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.result === 'success') {
-        setStockItems(json.data.map((p: any) => ({
+        setStockItems(json.data.map((p: ApiProduct) => ({
           id: p.id,
           name: p.name,
           category: p.category,
@@ -71,6 +83,7 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStock();
   }, [fetchStock]);
 
@@ -114,7 +127,8 @@ export default function InventoryPage() {
   }, [stockItems]);
 
   const filteredItems = useMemo(() => {
-    const normalize = (str: string) => {
+    const normalize = (str: string | null | undefined) => {
+      if (!str) return '';
       return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     };
 

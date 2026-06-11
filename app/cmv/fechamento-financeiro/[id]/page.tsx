@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
+import { Turno, findTurnosDoMesmoFechamento, getLocationLabel, getTurnoCusto } from '../../financial';
 
 export default function FechamentoFinanceiroPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [shift, setShift] = useState<any>(null);
+  const [shift, setShift] = useState<Turno | null>(null);
+  const [shiftGroup, setShiftGroup] = useState<Turno[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState('');
@@ -22,22 +24,22 @@ export default function FechamentoFinanceiroPage({ params }: { params: Promise<{
   useEffect(() => {
     async function loadShift() {
       try {
-        const res = await fetch(`/api/shifts?location=ALL`); // Wait, we might need a specific endpoint, or just fetch all and filter for now
-        // It's better to fetch specific, but since we don't have GET /api/shifts/[id], let's fetch all and find
-        const resCozinha = await fetch(`/api/shifts?location=COZINHA`);
-        const jsonCozinha = await resCozinha.json();
-        const resBar = await fetch(`/api/shifts?location=BAR`);
-        const jsonBar = await resBar.json();
-        
-        let allShifts = [];
-        if (jsonCozinha.result === 'success') allShifts.push(...jsonCozinha.data);
-        if (jsonBar.result === 'success') allShifts.push(...jsonBar.data);
-
-        const found = allShifts.find(s => s.ID === id);
+        const res = await fetch(`/api/shifts?location=ALL`, { cache: 'no-store' });
+        const json = await res.json();
+        const allShifts: Turno[] = json.result === 'success' && Array.isArray(json.data) ? json.data : [];
+        const found = allShifts.find((s) => s.ID === id);
         if (found) {
+          const group = findTurnosDoMesmoFechamento(allShifts, found);
+          const financialSource = group.find(item => (Number(item.RealFinalSales) || 0) > 0) || found;
           setShift(found);
-          setTargetCmvPercentage(found.PercentualMeta?.toString() || '30');
-          setGrossSales(found.ValorVendido?.toString() || '');
+          setShiftGroup(group);
+          setTargetCmvPercentage(financialSource.PercentualMeta?.toString() || '30');
+          setGrossSales(financialSource.ValorVendido ? financialSource.ValorVendido.toString() : '');
+          setIfoodNet(financialSource.IfoodNet ? financialSource.IfoodNet.toString() : '');
+          setNinetynineNet(financialSource.NinetynineNet ? financialSource.NinetynineNet.toString() : '');
+          setCounterNet(financialSource.CounterNet ? financialSource.CounterNet.toString() : '');
+          setMachineFees(financialSource.MachineFees ? financialSource.MachineFees.toString() : '');
+          setDiscounts(financialSource.Discounts ? financialSource.Discounts.toString() : '');
         } else {
           setErro('Turno não encontrado.');
         }
@@ -51,9 +53,17 @@ export default function FechamentoFinanceiroPage({ params }: { params: Promise<{
   }, [id]);
 
   const custoOperacional = useMemo(() => {
-    if (!shift) return 0;
-    return shift.Produtos.reduce((a: number, p: any) => a + (p.custo || 0), 0);
-  }, [shift]);
+    return shiftGroup.reduce((sum, item) => sum + getTurnoCusto(item), 0);
+  }, [shiftGroup]);
+
+  const custosPorLocal = useMemo(() => {
+    return shiftGroup.map(item => ({
+      id: item.ID,
+      local: item.Local,
+      label: getLocationLabel(item.Local),
+      custo: getTurnoCusto(item),
+    }));
+  }, [shiftGroup]);
 
   const totais = useMemo(() => {
     const iNet = parseFloat(ifoodNet.replace(',', '.')) || 0;
@@ -96,6 +106,7 @@ export default function FechamentoFinanceiroPage({ params }: { params: Promise<{
           realFinalSales: totais.realFinalSales,
           totalSales: totais.gSales,
           targetCmvPercentage: totais.tCmv,
+          consolidatedShiftIds: shiftGroup.map(item => item.ID),
         }),
       });
 
@@ -143,7 +154,7 @@ export default function FechamentoFinanceiroPage({ params }: { params: Promise<{
           <div>
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#1e293b', margin: 0 }}>Fechamento Financeiro</h1>
             <p style={{ color: '#64748b', marginTop: '4px' }}>
-              Turno: <span style={{ fontWeight: 700 }}>{shift.Periodo} — {shift.Data}</span>
+              Turno: <span style={{ fontWeight: 700 }}>{shift.Periodo} — {shift.Data}</span> • Fechamento consolidado
             </p>
           </div>
           <Link href="/cmv/historico" style={{ textDecoration: 'none', color: '#64748b', fontWeight: 600 }}>
@@ -162,7 +173,37 @@ export default function FechamentoFinanceiroPage({ params }: { params: Promise<{
           
           <div className="space-y-6">
             <div style={{ background: '#fff', borderRadius: '24px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Custos Operacionais do Turno</h3>
+                  <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '14px', lineHeight: 1.5 }}>
+                    Cozinha e bar entram juntos no CMV, porque o balcão mistura as duas operações.
+                  </p>
+                </div>
+                <div style={{ background: '#ecfdf5', color: '#047857', padding: '8px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                  {shiftGroup.length} {shiftGroup.length === 1 ? 'turno' : 'turnos'}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
+                {custosPorLocal.map(item => (
+                  <div key={item.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px' }}>{item.label}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#ef4444' }}>R$ {item.custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  </div>
+                ))}
+                <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '16px', padding: '16px' }}>
+                  <div style={{ fontSize: '11px', color: '#c2410c', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px' }}>Total Consolidado</div>
+                  <div style={{ fontSize: '18px', fontWeight: 900, color: '#c2410c' }}>R$ {custoOperacional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', borderRadius: '24px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
               <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: 700 }}>Entradas Financeiras (R$)</h3>
+              <p style={{ margin: '-12px 0 22px', color: '#64748b', fontSize: '14px', lineHeight: 1.5 }}>
+                Informe os valores uma única vez. O cálculo usa o custo operacional somado de cozinha + bar.
+              </p>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
@@ -211,7 +252,7 @@ export default function FechamentoFinanceiroPage({ params }: { params: Promise<{
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '14px' }}>Custo Total Operacional</span>
+                  <span style={{ color: '#94a3b8', fontSize: '14px' }}>Custo Operacional Consolidado</span>
                   <span style={{ fontWeight: 600, color: '#ef4444' }}>R$ {custoOperacional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                 </div>
 

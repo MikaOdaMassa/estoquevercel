@@ -38,7 +38,7 @@ export default function LoginPage() {
           <div style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', width: '72px', height: '72px', borderRadius: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 20px -5px rgba(79, 70, 229, 0.4)' }}>
             <i className="fas fa-user-shield" style={{ color: '#fff', fontSize: '30px' }}></i>
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#0f172a', margin: '0 0 10px 0', letterSpacing: '-0.02em' }}>Cozinha Janela</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#0f172a', margin: '0 0 10px 0', letterSpacing: '-0.02em' }}>Porks</h1>
           <p style={{ color: '#64748b', fontSize: '15px', fontWeight: 500, margin: 0 }}>Identifique-se para acessar o sistema</p>
         </div>
 

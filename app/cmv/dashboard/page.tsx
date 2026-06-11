@@ -3,40 +3,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole, getUserLocation } from '../../actions/auth';
+import { Turno, getLocationLabel, getTurnoCusto, groupTurnosConsolidados } from '../financial';
 
-interface TurnoProduto {
-  produtoNome: string;
-  categoria: string;
-  estoqueInicial: number;
-  entradas: number;
-  estoqueFinal: number;
-  custoAplicado: number;
-  consumo: number;
-  custo: number;
-}
+type LocationFilter = 'ALL' | 'COZINHA' | 'BAR';
 
-interface Turno {
-  ID: string;
-  Data: string;
-  Responsavel: string;
-  Periodo: string;
-  Status: string;
-  ValorVendido: number;
-  RealFinalSales?: number;
-  IfoodNet?: number;
-  NinetynineNet?: number;
-  CounterNet?: number;
-  MachineFees?: number;
-  Discounts?: number;
-  PercentualMeta: number;
-  Produtos: TurnoProduto[];
-}
+const LOCATION_OPTIONS: { value: LocationFilter; label: string; icon: string }[] = [
+  { value: 'ALL', label: 'Consolidado', icon: 'fa-layer-group' },
+  { value: 'COZINHA', label: 'Cozinha', icon: 'fa-utensils' },
+  { value: 'BAR', label: 'Bar', icon: 'fa-glass-martini-alt' },
+];
 
 export default function DashboardPage() {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
-  const [currentLocation, setCurrentLocation] = useState('COZINHA');
+  const [currentLocation, setCurrentLocation] = useState<LocationFilter>('ALL');
   const [userRole, setUserRole] = useState('OPERATOR');
 
   useEffect(() => {
@@ -45,7 +26,7 @@ export default function DashboardPage() {
       const loc = await getUserLocation();
       setUserRole(role);
       if (role === 'OPERATOR') {
-        setCurrentLocation(loc);
+        setCurrentLocation(loc === 'BAR' ? 'BAR' : 'COZINHA');
       }
     };
     init();
@@ -56,7 +37,7 @@ export default function DashboardPage() {
       setLoading(true);
       setErro('');
       try {
-        const res = await fetch(`/api/shifts?location=${currentLocation}`);
+        const res = await fetch(`/api/shifts?location=${currentLocation}`, { cache: 'no-store' });
         const json = await res.json();
         if (json.result === 'success' && Array.isArray(json.data)) {
           setTurnos(json.data);
@@ -73,7 +54,8 @@ export default function DashboardPage() {
   }, [currentLocation]);
 
   const stats = useMemo(() => {
-    const completedTurnos = turnos.filter(t => t.Status === 'CONCLUIDO');
+    const financialTurnos = currentLocation === 'ALL' ? groupTurnosConsolidados(turnos) : turnos;
+    const completedTurnos = financialTurnos.filter(t => t.Status === 'CONCLUIDO');
     if (completedTurnos.length === 0) return null;
 
     const totalVendido = completedTurnos.reduce((a, t) => a + (Number(t.RealFinalSales) || 0), 0);
@@ -83,7 +65,7 @@ export default function DashboardPage() {
     const totalMachineFees = completedTurnos.reduce((a, t) => a + (Number(t.MachineFees) || 0), 0);
     const totalDiscounts = completedTurnos.reduce((a, t) => a + (Number(t.Discounts) || 0), 0);
 
-    const totalCusto = completedTurnos.reduce((a, t) => a + (t.Produtos?.reduce((sum, p) => sum + (p.custo || 0), 0) || 0), 0);
+    const totalCusto = completedTurnos.reduce((a, t) => a + getTurnoCusto(t), 0);
     const totalMeta = completedTurnos.reduce((a, t) => a + (Number(t.RealFinalSales) || 0) * ((Number(t.PercentualMeta) || 0) / 100), 0);
     const cmvGlobal = totalVendido > 0 ? (totalCusto / totalVendido) * 100 : 0;
     const lucroBruto = totalVendido - totalCusto;
@@ -93,10 +75,19 @@ export default function DashboardPage() {
     const porPeriodo = periodos.map(p => {
       const ts = completedTurnos.filter(t => t.Periodo === p);
       const vendido = ts.reduce((a, t) => a + (Number(t.RealFinalSales) || 0), 0);
-      const custo = ts.reduce((a, t) => a + (t.Produtos?.reduce((sum, p) => sum + (p.custo || 0), 0) || 0), 0);
+      const custo = ts.reduce((a, t) => a + getTurnoCusto(t), 0);
       const cmv = vendido > 0 ? (custo / vendido) * 100 : 0;
       return { periodo: p, vendido, custo, cmv, count: ts.length };
     });
+
+    const resumoPorLocal = LOCATION_OPTIONS
+      .filter(option => option.value !== 'ALL')
+      .map(option => {
+        const ts = turnos.filter(t => t.Status === 'CONCLUIDO' && t.Local === option.value);
+        const custo = ts.reduce((a, t) => a + getTurnoCusto(t), 0);
+        const percentualCusto = totalCusto > 0 ? (custo / totalCusto) * 100 : 0;
+        return { local: option.value, label: option.label, custo, percentualCusto, count: ts.length };
+      });
 
     const custoPorProduto: Record<string, number> = {};
     completedTurnos.forEach(t => {
@@ -110,9 +101,9 @@ export default function DashboardPage() {
 
     return { 
       totalVendido, totalIfood, totalNinetynine, totalCounter, totalMachineFees, totalDiscounts,
-      totalCusto, totalMeta, cmvGlobal, lucroBruto, desvio, porPeriodo, topProdutos 
+      totalCusto, totalMeta, cmvGlobal, lucroBruto, desvio, porPeriodo, topProdutos, resumoPorLocal
     };
-  }, [turnos]);
+  }, [currentLocation, turnos]);
 
   if (loading) {
     return (
@@ -131,36 +122,30 @@ export default function DashboardPage() {
         <header className="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', margin: 0 }}>Dashboard Financeiro</h1>
-            <p style={{ color: '#64748b', marginTop: '4px' }}>Monitoramento de CMV e Lucratividade (Backend Real)</p>
+            <p style={{ color: '#64748b', marginTop: '4px' }}>
+              Monitoramento de CMV e lucratividade - {currentLocation === 'ALL' ? 'visão consolidada' : getLocationLabel(currentLocation)}
+            </p>
           </div>
 
           {/* Tab Switcher */}
           {userRole === 'ADMIN' && (
-            <div style={{ display: 'flex', gap: '8px', background: '#e2e8f0', padding: '6px', borderRadius: '16px', width: 'fit-content' }}>
-              <button 
-                onClick={() => setCurrentLocation('COZINHA')}
-                style={{ 
-                  padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
-                  background: currentLocation === 'COZINHA' ? '#fff' : 'transparent',
-                  color: currentLocation === 'COZINHA' ? '#4f46e5' : '#64748b',
-                  boxShadow: currentLocation === 'COZINHA' ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <i className="fas fa-utensils" style={{ marginRight: '8px' }}></i> Cozinha
-              </button>
-              <button 
-                onClick={() => setCurrentLocation('BAR')}
-                style={{ 
-                  padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
-                  background: currentLocation === 'BAR' ? '#fff' : 'transparent',
-                  color: currentLocation === 'BAR' ? '#4f46e5' : '#64748b',
-                  boxShadow: currentLocation === 'BAR' ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <i className="fas fa-glass-martini-alt" style={{ marginRight: '8px' }}></i> Bar
-              </button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', background: '#e2e8f0', padding: '6px', borderRadius: '16px', width: 'fit-content', maxWidth: '100%' }}>
+              {LOCATION_OPTIONS.map(option => (
+                <button
+                  key={option.value}
+                  onClick={() => setCurrentLocation(option.value)}
+                  style={{
+                    padding: '10px 14px', borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer',
+                    background: currentLocation === option.value ? '#fff' : 'transparent',
+                    color: currentLocation === option.value ? '#4f46e5' : '#64748b',
+                    boxShadow: currentLocation === option.value ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <i className={`fas ${option.icon}`} style={{ marginRight: '8px' }}></i> {option.label}
+                </button>
+              ))}
             </div>
           )}
         </header>
@@ -175,13 +160,15 @@ export default function DashboardPage() {
             
             {/* Destaque CMV */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 md:p-10 gap-6 text-white rounded-[24px]" style={{ 
-              background: stats.cmvGlobal > (turnos[0]?.PercentualMeta || 30) ? 'linear-gradient(135deg, #ef4444, #b91c1c)' : 'linear-gradient(135deg, #4f46e5, #4338ca)',
+              background: stats.desvio > 0 ? 'linear-gradient(135deg, #ef4444, #b91c1c)' : 'linear-gradient(135deg, #4f46e5, #4338ca)',
             }}>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', opacity: 0.8, marginBottom: '8px' }}>CMV Global Acumulado</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', opacity: 0.8, marginBottom: '8px' }}>
+                  CMV {currentLocation === 'ALL' ? 'Consolidado' : getLocationLabel(currentLocation)} Acumulado
+                </div>
                 <div style={{ fontSize: '64px', fontWeight: 900 }}>{stats.cmvGlobal.toFixed(1)}%</div>
                 <div style={{ background: 'rgba(255,255,255,0.2)', padding: '6px 16px', borderRadius: '100px', display: 'inline-block', fontSize: '14px', fontWeight: 600, marginTop: '16px' }}>
-                   {stats.cmvGlobal > (turnos[0]?.PercentualMeta || 30) ? '⚠ Acima da meta' : '✓ Dentro da meta'}
+                   {stats.desvio > 0 ? '⚠ Acima da meta' : '✓ Dentro da meta'}
                 </div>
               </div>
               <div className="text-left md:text-right">
@@ -204,6 +191,34 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            {userRole === 'ADMIN' && currentLocation === 'ALL' && (
+              <div style={{ background: '#fff', padding: '28px', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 700 }}>Custo por Local</h3>
+                <p style={{ margin: '0 0 24px 0', color: '#64748b', fontSize: '14px', lineHeight: 1.5 }}>
+                  As vendas ficam consolidadas porque o balcão mistura bar e cozinha. Por local, o painel mostra apenas a participação no custo operacional.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                  {stats.resumoPorLocal.map(item => (
+                    <div key={item.local} style={{ background: '#f8fafc', padding: '18px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                        <span style={{ fontWeight: 800, color: '#1e293b' }}>{item.label}</span>
+                        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>{item.count} fech.</span>
+                      </div>
+                      <div style={{ fontSize: '28px', fontWeight: 900, color: '#4f46e5', marginBottom: '12px' }}>
+                        R$ {item.custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div style={{ display: 'grid', gap: '6px', fontSize: '13px', color: '#64748b' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Participação no custo</span>
+                          <strong>{item.percentualCusto.toFixed(1)}%</strong>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Composição Financeira */}
             <div style={{ background: '#fff', padding: '28px', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
